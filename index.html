@@ -2028,9 +2028,17 @@ function renderQuiz(){
       <span class="stat">${u.m>=20?`새 문제로만 출제됩니다`:`새 문제가 ${u.m}개 남아 새 주기를 시작합니다`}</span></div>
     ${S.history&&S.history.length?`<div class="part"><h2>최근 기록</h2><span>최근 5세트</span></div>
       <ul class="files">${S.history.slice(-5).reverse().map(h=>`<li><span class="code">#${h.no}</span><div class="fn"><b>${LVN[h.lv]} · 객관식 ${h.mc}/20 · 서술 평균 ${h.es}점</b><span>${h.date}</span></div></li>`).join('')}</ul>`:''}
+    ${(S.sets||Object.keys(S.wrong).length)?`<div class="row" style="margin-top:22px"><button class="btn sm ghost" id="resetAll">기록 전체 초기화</button><span class="stat">푼 문제·세트 기록·오답노트를 모두 처음 상태로</span></div><div id="resetC"></div>`:''}
   </section>`;
   app.querySelectorAll('.lv').forEach(b=>b.onclick=()=>{chosenLv=+b.dataset.lv; renderQuiz();});
   $('#start').onclick=()=>{ S.current=buildSet(chosenLv); save(); renderQuiz(); window.scrollTo(0,0); };
+  const ra=$('#resetAll');
+  if(ra) ra.onclick=()=>{
+    const c=$('#resetC');
+    c.innerHTML=`<div class="confirm" style="margin-top:8px"><span>푼 문제 기록, 세트 기록, 오답노트가 모두 지워집니다. 되돌릴 수 없습니다.</span><button class="btn sm" data-y style="background:var(--red);border-color:var(--red)">초기화</button><button class="btn sm ghost" data-n>취소</button></div>`;
+    c.querySelector('[data-n]').onclick=()=>c.innerHTML='';
+    c.querySelector('[data-y]').onclick=()=>{ S={seen:{1:[],2:[],3:[]},wrong:{},sets:0,history:[],current:null,_deleted:Object.keys(S.wrong)}; retrySet=null; save(); renderQuiz(); };
+  };
 }
 
 /* ---------- paper (used for exam and retry) ---------- */
@@ -2242,12 +2250,20 @@ function renderNotes(){
   sec.innerHTML=`<div class="exam-head"><div class="t"><small>GCT583 · Review</small><h1>오답노트</h1></div>
       <div class="meta"><div>전체</div><div>${all.length}문항</div><div>객관식</div><div>${all.filter(w=>w.type==='mcq').length}</div><div>서술형</div><div>${all.filter(w=>w.type==='essay').length}</div></div></div>
     <p class="instr">틀린 <b>개념</b>이 먼저 보이고, 문제 지문은 접혀 있습니다. 완전히 이해한 항목은 오른쪽 위 ×로 지울 수 있습니다. 맨 아래에서 오답만 다시 풀어볼 수 있습니다.</p>
+    ${all.length?`<div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn sm ghost" id="clearNotes">오답노트 전체 비우기</button></div><div id="clearC"></div>`:''}
     ${all.length?`<div class="ntools" role="group" aria-label="필터">
       ${[['all','전체'],['mcq','객관식'],['essay','서술형'],...lecs.map(l=>[l,l])].map(([k,t])=>`<button class="chip" data-f="${k}" aria-pressed="${noteFilter===k}">${esc(t)}</button>`).join('')}
     </div>`:''}
     <div id="nlist"></div>`;
   app.appendChild(sec);
   sec.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{noteFilter=b.dataset.f; renderNotes();});
+  const cb=sec.querySelector('#clearNotes');
+  if(cb) cb.onclick=()=>{
+    const c=sec.querySelector('#clearC');
+    c.innerHTML=`<div class="confirm" style="margin-top:8px"><span>오답노트 ${all.length}문항을 모두 지울까요? 되돌릴 수 없습니다.</span><button class="btn sm" data-y style="background:var(--red);border-color:var(--red)">모두 지우기</button><button class="btn sm ghost" data-n>취소</button></div>`;
+    c.querySelector('[data-n]').onclick=()=>c.innerHTML='';
+    c.querySelector('[data-y]').onclick=()=>{ (S._deleted=S._deleted||[]).push(...Object.keys(S.wrong)); S.wrong={}; retrySet=null; noteFilter='all'; save(); renderNotes(); };
+  };
   const nl=sec.querySelector('#nlist');
   if(!all.length){ nl.innerHTML=`<div class="empty"><b>오답노트가 비어 있습니다.</b><br>퀴즈에서 틀린 객관식과 60점 미만 서술형이 여기에 자동으로 모입니다.<div class="row" style="justify-content:center;margin-top:12px"><button class="btn" id="gq">퀴즈 풀러 가기</button></div></div>`; $('#gq').onclick=()=>go('quiz'); return; }
   list.forEach(w=>nl.appendChild(noteEl(w)));
